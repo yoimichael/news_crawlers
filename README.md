@@ -66,21 +66,26 @@ SideNote: To check current scrapyd projects run:
     supervisord -c /etc/supervisor/supervisord.conf
 ```
 Note: 
-    i. The socket file and all logs are stored in /tmp/. To check logs:
-    ```
-        less /tmp/supervisord.log
-    ```
-    ii. to close supervisor
-    ```
-        ps aux | grep supervisord
-        kill <PID>
-    ```
-    iii. interactive shell for supervisor
-    ```
-        supervisorctl
-        supervisor> status
-    ```
+    
+* The socket file and all logs are stored in /tmp/. To check logs:
+```
+    less /tmp/supervisord.log
+```
 
+* To exit supervisor
+```
+    ps aux | grep supervisord
+    kill <PID>
+```
+
+* To use supervisor's interactive shell
+```
+    supervisorctl
+
+    supervisor> status
+```
+3. Follow from step 3 in Usage 2.
+   
 ## Spiders:
 ### FinanceSpider 
 This crawler uses API endpoints implemented within Tencent New's auto-scroll feature in order to crawl and store all key information about news related to finance. 
