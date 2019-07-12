@@ -13,7 +13,7 @@
 |      spiderkeeper      |       nice UI for scrapyd      |
 |     scrapyd-client     |      a helper for scrapyd      |
 
-### Usage 1: Test crawlling:
+### Usage 1: Test crawling:
 ```
     cd TencentNews/
     scrapy crawl FinanceSpider
@@ -54,6 +54,7 @@ SideNote: To check current scrapyd projects run:
 ```
     scrapyd-client projects
 ```
+8. (optional) You can schedule periodically crawlers in "Periodic jobs" found on the left panel.
 
 ### Usage 3: more automated usage2 (beta)
 1. move the config used by supervisor
@@ -82,7 +83,7 @@ Note:
 
 ## Spiders:
 ### FinanceSpider 
-This crawler uses API enpoints implemented within Tencent New's auto-scroll feature in order to crawl and store all key information about news related to finance. 
+This crawler uses API endpoints implemented within Tencent New's auto-scroll feature in order to crawl and store all key information about news related to finance. 
 
 ## MySQL database schema
 Database name: news
@@ -132,4 +133,4 @@ Table name: finance_news
 ## Known bug
 
 1. Spiderkeeper doesn't show up the list of spiders available:
-    run scrapyd-deploy in directory to manually deploy
+    solution: run ```scrapyd-deploy``` in the same directory to manually deploy
