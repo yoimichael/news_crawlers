@@ -1,0 +1,7 @@
+scrapy
+logging
+traceback
+mysql
+mysql-connector-python
+scrapyd
+spiderkeeper
