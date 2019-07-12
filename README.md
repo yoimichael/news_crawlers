@@ -1,8 +1,82 @@
 # Tencent News Crawler using Spiderkeeper, Scrapyd, Supervisor
 
-## Usage
-- For past news data, pass in the argument ```days_prior``` to specify how many days before do you want the spider to start crawling. (Drawback: the API weblink available only supports news about 20 days before the current date.)
+### Python dependences (pip install)
+First, make sure pip install all dependences listed below.
+
+|         package        |               why              |
+|:----------------------:|:------------------------------:|
+|         logging        |            for logs            |
+|        traceback       |    for debug tracing in logs   |
+| mysql-connector-python |      python mysql database     |
+|         scrapyd        | crawler automation and control |
+|       supervisor       | process automation and control |
+|      spiderkeeper      |       nice UI for scrapyd      |
+|     scrapyd-client     |      a helper for scrapyd      |
+
+### Usage1: Test crawlling:
+```
+    cd TencentNews/
+    scrapy crawl FinanceSpider
+```
+(The reason to use ```cd``` is to support ```scrapy``` commands, which only works with scrapy.cfg file in the same directory)
+- For past news data, pass in the argument ```days_prior``` to specify how many days before do you want the spider to start crawling. (Drawback: the API weblink available only supports news about 20 days before the current date.) e.g.
+```
+    scrapy crawl FinanceSpider -a days_prior=3
+```
+This way it will update comment_num of news in the past.
+
 - For current data, don't pass in anything.
+
+### Usage2: Spider automation minotoring
+
+1. run
+```
+    scrapyd
+```
+2. open another terminal, run
+```
+    spiderkeeper --server=http://localhost:6800 --username=admin --password=admin
+```
+3. go to http://localhost:5000 for minitoring UI by spiderkeeper
+4. follow the instruction to create a project
+5. follow the instruction to deploy an egg file 
+egg file is created by 
+```
+    scrapyd-deploy --build-egg output.egg
+```
+6. click on "Dashboard" on the left panel
+7. click on "RunOnce"
+Note: if you don't see spider on the list of spiders, try running```scrapyd-deploy```in the same directory
+
+SideNote: To check current scrapyd projects run:
+    ```
+        scrapyd-client projects
+    ```
+
+### Usage3: more automated usage2 (beta AF)
+1. move the config used by supervisor
+```
+    sudo mv supervisord.conf /etc/supervisor/
+```
+2. run supervisor
+```
+    supervisord -c /etc/supervisor/supervisord.conf
+```
+Note: 
+    i. The socket file and all logs are stored in /tmp/. To check logs:
+    ```
+        less /tmp/supervisord.log
+    ```
+    ii. to close supervisor
+    ```
+        ps aux | grep supervisord
+        kill <PID>
+    ```
+    iii. interactive shell for supervisor
+    ```
+        supervisorctl
+        supervisor> status
+    ```
 
 ## Spiders:
 ### FinanceSpider 
@@ -11,9 +85,9 @@ This crawler uses API enpoints implemented within Tencent New's auto-scroll feat
 ## MySQL database schema
 Database name: news
 Table name: finance_news
-+--------------+-----------------------+------+-----+---------+-------+
+
 | Field        | Type                  | Null | Key | Default | Extra |
-+--------------+-----------------------+------+-----+---------+-------+
+|:-------------+-----------------------+------+-----+---------+------:|
 | id           | char(14)              | NO   | PRI | NULL    |       |
 | title        | char(40)              | NO   |     | NULL    |       |
 | publish_time | datetime              | NO   |     | NULL    |       |
@@ -22,7 +96,6 @@ Table name: finance_news
 | url          | char(60)              | YES  |     | NULL    |       |
 | keywords     | tinytext              | YES  |     | NULL    |       |
 | content      | text                  | YES  |     | NULL    |       |
-+--------------+-----------------------+------+-----+---------+-------+
 
 ## Findings on Tencent News's URLs
 1. https://pacaio.match.qq.com/xw/site?&ext=finance&num=20&page=0
@@ -53,18 +126,6 @@ Table name: finance_news
     'finance_banking',
     'finance_collection']
     ```
-
-
-## Python dependences (pip install)
-
-|         Package        |                 Why                |
-+------------------------+------------------------------------+
-|         scrapy         |            for crwalers            |
-|         logging        |              for logs              |
-|        traceback       |      for debug tracing in logs     |
-| mysql-connector-python | for SHA2 password auth to mysql db |
-| scrapyd & spiderkeeper | for crawler monitoring and control | 
-supervisor
 
 ## Known bug
 
