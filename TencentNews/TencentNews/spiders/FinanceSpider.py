@@ -7,6 +7,7 @@ from pytz import timezone
 import utils
 import config
 from SqlHelper import SqlHelper
+from logging import WARNING
 
 class FinanceSpider(scrapy.Spider):
     name = "FinanceSpider"
@@ -26,13 +27,27 @@ class FinanceSpider(scrapy.Spider):
         days_prior=int(getattr(self, 'days_prior', 0))
         print("从%d天前开始爬" % days_prior)
         self.date = date - datetime.timedelta(days=days_prior)
+        
+        # 数据库
+        self.initialize_db()
+
+        # 本地统计：
         # 默认每页数量
         self.num = 50
         # 爬取新闻总数
         self.total = 0
+        # 数据库原本数量
+        self.rows_before = self.get_num_rows()
+        
+    def get_num_rows(self):
+        # 得取数据库有多少行数据点
+        command = "SELECT COUNT(*) FROM " + config.table_name
+        res = self.sql.query_one(command)
+        if res:
+            return res[0]
+        return None
 
-        self.initialize_db()
-
+    
     def initialize_db(self):
         # 数据管理方法
         self.sql = SqlHelper()
@@ -76,7 +91,7 @@ class FinanceSpider(scrapy.Spider):
         是否已经爬完到今天
         '''
         return (datetime.datetime.now(tz=self.tz)-self.date).days < 0
-
+        
     def start_requests(self):
         # 爬到今天
         while not self.uptoDate():  
@@ -100,6 +115,14 @@ class FinanceSpider(scrapy.Spider):
             # 进入下一天
             self.date += datetime.timedelta(days=1)
             print("进入下一天，目前爬取数量：%d" % self.total)
+
+        # 爬完之后更新加了多少条数据
+        rows_now = self.get_num_rows() 
+        if self.rows_before and rows_now:
+            self.added = rows_now - self.rows_before
+        else:
+            self.added = "Get_num_row error"
+        self.log_summary()
 
     def parse_news_json(self, response):
         # 读取重要消息
@@ -160,10 +183,16 @@ class FinanceSpider(scrapy.Spider):
                 'comment_num': news['comment_num'],
                 'url': news['url'],
                 'keywords': "|".join(t[0] for t in news['tag_label']),                
-            }
-    
-    def __del__(self):
-        print("\n********************************")
-        print("Total number of news crawled: %d\nAbnormal counter: %d"
-                % (self.total, self.fail_counter))
-        
+            }    
+
+
+    def log_summary(self):
+        s = "\n********************\n"
+        summary = ""
+        headers = ['Links','Abnormal','New data']
+        data = [self.total, self.fail_counter, self.added]
+        for header, data in zip(headers, data):
+            summary += header + ": " + str(data) + "\n"
+        summary = s + summary + s
+        utils.log(summary, WARNING)
+

@@ -5,6 +5,8 @@
 
 |         Package        |              For               |
 |:----------------------:|:------------------------------:|
+|         scrapy         |           crawl engine         |
+|         twisted        |         network support        |
 |         logging        |              logs              |
 |        traceback       |      debug tracing in logs     |
 | mysql-connector-python |      python mysql database     |
@@ -29,13 +31,17 @@ Sidenote: the reason to use ```cd``` is to support ```scrapy``` commands, which 
 
 ### Usage 2: Spider automation minotoring
 
-1. Run:
+1. Go to this TencentNews folder. Run [scrapdy](https://scrapyd.readthedocs.io/en/stable/overview.html):
 ```
+    cd TencentNews
     scrapyd
 ```
-2. Open another terminal, then run:
+scrapyd will set up a new server on localhost:6800, this location will be used as the server's address for spiderkeeper as well. If you intent to change the port, pass in the new address to the argument ```--server``` when running spiderkeeper.
+
+2. Open another terminal, in the same folder. Run [spiderkeeper](https://github.com/DormyMo/SpiderKeeper):
 ```
-    spiderkeeper --server=http://localhost:6800 --username=admin --password=admin
+    cd TencentNews
+    spiderkeeper
 ```
 3. Go to http://localhost:5000 where hosts spiderkeeper UI
 4. Create a project.
@@ -44,19 +50,21 @@ Sidenote: the reason to use ```cd``` is to support ```scrapy``` commands, which 
     scrapyd-deploy --build-egg output.egg
 ```
 6. click on "Dashboard" on the left panel.
-7. click on "RunOnce".
-    
-Note: [(issue)](https://github.com/DormyMo/SpiderKeeper/issues/87) if you don't see spider on the list of spiders, try running in the same directory:
+7. click on "RunOnce". 
+[Issue:](https://github.com/DormyMo/SpiderKeeper/issues/87) if you don't see spider on the list of spiders, or seeing ```builtins.KeyError:``` in the terminal running scrapyd, try running in the same directory:
 ```
     scrapyd-deploy
 ```
-SideNote: To check current scrapyd projects run:
+After you see a response with "ok" status, refresh spiderkeeper. 
+
+Note: To see a list of current scrapyd projects, run:
 ```
     scrapyd-client projects
 ```
+[More useful scrapyd-client commands](https://github.com/scrapy/scrapyd-client).
 8. (optional) You can schedule periodically crawlers in "Periodic jobs" found on the left panel.
 
-### Usage 3: more automated usage2 (beta)
+### Usage 3: more automated usage2 (TODO)
 1. move the config used by supervisor
 ```
     sudo mv supervisord.conf /etc/supervisor/

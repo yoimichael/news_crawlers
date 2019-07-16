@@ -19,5 +19,7 @@ def log(message, level=logging.DEBUG, *args, **kwargs):
             message
             )
         )
-        # msg = "".join(traceback.format_stack())
-        # logging.log(level, msg, *args, **kwargs)
+        if level == logging.ERROR:
+            msg = "".join(traceback.format_stack())
+            logging.log(level, msg, *args, **kwargs)
+

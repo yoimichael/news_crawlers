@@ -15,6 +15,7 @@ SPIDER_MODULES = ['TencentNews.spiders']
 NEWSPIDER_MODULE = 'TencentNews.spiders'
 
 # LOG_STDOUT = True
+LOG_LEVEL = 'WARNING'
 
 FEED_EXPORT_ENCODING = 'utf-8'
 
