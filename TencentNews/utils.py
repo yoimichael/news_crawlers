@@ -43,5 +43,26 @@ def img_dir(date, group):
         os.makedirs(directory)
     
     return directory
-
+def download_imgs(urls, directory, news_id):
+    '''
+    下载保存标题缩略图和文章里的插图
+    '''
+    img_no = 0
+    err_counter = 0 
+    err = None
     
+    for url in urls:
+        # 把//开头的url改成http://
+        if not "http" in url:
+            url = url.replace("//","http://",1)
+        img_no += 1
+        img_loc = (directory + news_id + '-' + str(img_no) + ".jpg")
+        is_saved, err = save_img(url, img_loc)
+        err_counter += (not is_saved)
+    
+    # 如果有下载错误的
+    if img_no != len(urls) or err_counter > 0:
+        log(err,ERROR)
+        self.fail_counter += 1
+
+    return img_no
