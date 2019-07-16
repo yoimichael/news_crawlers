@@ -112,6 +112,7 @@ Table name: finance_news
 | url          | char(60)              | YES  |     | NULL    |       |
 | keywords     | tinytext              | YES  |     | NULL    |       |
 | content      | text                  | YES  |     | NULL    |       |
+| image_num    | tinyint(3) unsigned   | NO   |     | NULL    |       |
 
 ## Findings on Tencent News's URLs
 1. https://pacaio.match.qq.com/xw/site?&ext=finance&num=20&page=0

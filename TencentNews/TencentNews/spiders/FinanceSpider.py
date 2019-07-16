@@ -7,7 +7,7 @@ from pytz import timezone
 import utils
 import config
 from SqlHelper import SqlHelper
-from logging import WARNING
+from logging import WARNING, ERROR
 
 class FinanceSpider(scrapy.Spider):
     name = "FinanceSpider"
@@ -31,14 +31,6 @@ class FinanceSpider(scrapy.Spider):
         # 数据库
         self.initialize_db()
 
-        # 本地统计：
-        # 默认每页数量
-        self.num = 50
-        # 爬取新闻总数
-        self.total = 0
-        # 数据库原本数量
-        self.rows_before = self.get_num_rows()
-        
     def get_num_rows(self):
         # 得取数据库有多少行数据点
         command = "SELECT COUNT(*) FROM " + config.table_name
@@ -60,7 +52,7 @@ class FinanceSpider(scrapy.Spider):
         # REPLACE 是让爬虫得到最新的评论数量
         self.insert_command = (
             "REPLACE INTO {} "
-            "VALUES(%s,%s,%s,%s,%s,%s,%s,%s) ".format(table_schema)
+            "VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s) ".format(table_schema)
         )
 
     def create_table(self):
@@ -91,8 +83,21 @@ class FinanceSpider(scrapy.Spider):
         是否已经爬完到今天
         '''
         return (datetime.datetime.now(tz=self.tz)-self.date).days < 0
-        
+    
+    def reset_stats(self):
+        # *******本地统计*******
+        # 默认每页数量
+        self.num = 50
+        # 爬取新闻总数
+        self.total = 0
+        # 数据库原本数量
+        self.rows_before = self.get_num_rows()
+        # 下载图片数量
+        self.img_downloaded = 0
+
     def start_requests(self):
+        self.reset_stats()
+
         # 爬到今天
         while not self.uptoDate():  
             # 爬取当天所有和finance有关的分类
@@ -122,7 +127,6 @@ class FinanceSpider(scrapy.Spider):
             self.added = rows_now - self.rows_before
         else:
             self.added = "Get_num_row error"
-        self.log_summary()
 
     def parse_news_json(self, response):
         # 读取重要消息
@@ -138,18 +142,60 @@ class FinanceSpider(scrapy.Spider):
             yield request
 
     def parse_news_http(self,response):
+        
+        # news data
+        news_data = response.meta['news_data'] 
+        
+        # 图片地址
+        urls = (news_data['image_url'] + 
+                response.css(".one-p img::attr(src)").extract())
+        date = news_data['publish_time'][:10]
+        directory = utils.img_dir(date, 'tencent_news')
+        news_id = news_data['id']
+        # 下载图片
+        img_no = self.download_imgs(urls,directory,news_id)
+        
         # 爬取新闻内容    
         content = ""
-        for s in response.css('.one-p::text'):
-            content += s.extract().strip() + '\n'
+        for s in response.css('.one-p::text').extract():
+            s = s.strip()
+            content += s + '\n' if s else ""
+
         # 存进数据库
-        news_data = response.meta['news_data'] 
         news_data['content'] = content
+        news_data['image_num'] = img_no
         self.store(news_data)
+
+    def download_imgs(self, urls, directory, news_id):
+        '''
+        下载保存标题缩略图和文章里的插图
+        '''
+        img_no = 0
+        err_counter = 0 
+        err = None
+        
+        for url in urls:
+            # 把//开头的url改成http://
+            if not "http" in url:
+                url = url.replace("//","http://",1)
+            img_no += 1
+            img_loc = (directory + news_id + '-' + str(img_no) + ".jpg")
+            is_saved, err = utils.save_img(url, img_loc)
+            err_counter += (not is_saved)
+        
+        # 如果有下载错误的
+        if img_no != len(urls) or err_counter > 0:
+            utils.log(err,ERROR)
+            self.fail_counter += 1
+        
+        # 统计下载图片数量
+        self.img_downloaded += img_no
+
+        return img_no
 
     def error_parse(self, failure):
         # 记录异常数量 1
-        utils.log(failure.request.meta)
+        utils.log(failure.request.meta,ERROR)
         self.fail_counter += 1
 
     def store(self, data):
@@ -183,16 +229,20 @@ class FinanceSpider(scrapy.Spider):
                 'comment_num': news['comment_num'],
                 'url': news['url'],
                 'keywords': "|".join(t[0] for t in news['tag_label']),                
+                'image_url': [url for urls in news['irs_imgs'].values() for url in urls]
             }    
 
 
-    def log_summary(self):
-        s = "\n********************\n"
-        summary = ""
-        headers = ['Links','Abnormal','New data']
-        data = [self.total, self.fail_counter, self.added]
-        for header, data in zip(headers, data):
-            summary += header + ": " + str(data) + "\n"
-        summary = s + summary + s
-        utils.log(summary, WARNING)
-
+    def __del__(self):
+        # 总结本次爬取数据
+        try:
+            s = "\n********************\n"
+            summary = ""
+            headers = ['Links','Abnormal','New data','Image downloads']
+            data = [self.total, self.fail_counter, self.added, self.img_downloaded]
+            for header, data in zip(headers, data):
+                summary += header + ": " + str(data) + "\n"
+            summary = s + summary + s
+            utils.log(summary, WARNING)
+        except Exception:
+            utils.log("\nSpider exited abnormally", WARNING)

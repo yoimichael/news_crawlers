@@ -13,10 +13,11 @@ table_schema = (
     ("`title`", "CHAR(40) NOT NULL"), #目前找到的最长是30
     ("`publish_time`", "DATETIME NOT NULL"), 
     ("`source`", "CHAR(20)"), #目前找到的最长是10
-    ("`comment_num`", "MEDIUMINT UNSIGNED NOT NULL"), # 最大值有8388607
+    ("`comment_num`", "MEDIUMINT UNSIGNED NOT NULL"), # 最大值有16777215
     ("`url`", "CHAR(60)"), #目前找到的最长是56，由于URL很有格式化，不会有长度大幅变化
     ("`keywords`", "TINYTEXT"), #目前找到的最长是24, TINYTEXT支持最大255
     ("`content`", "TEXT"), #目前找到的最长是373, TINYTEXT支持最大65535 
+    ("`image_num`", "TINYINT UNSIGNED NOT NULL"), #最大值255
 )
 
 # 所有和财经有关的新闻类别
