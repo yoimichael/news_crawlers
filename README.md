@@ -12,8 +12,8 @@
 | mysql-connector-python |      python mysql database     |
 |         scrapyd        | crawler automation and control |
 |       supervisor       | process automation and control |
-|      spiderkeeper      |       nice UI for scrapyd      |
-|     scrapyd-client     |      a helper for scrapyd      |
+|      spiderkeeper      |             nice UI            |
+|     scrapyd-client     |    scrapy project deployment   |
 
 ### Usage 1: Test crawling:
 ```
