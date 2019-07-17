@@ -28,17 +28,12 @@ class FinanceSpider(scrapy.Spider):
         print("从%d天前开始爬" % days_prior)
         self.date = date - datetime.timedelta(days=days_prior)
         
+        # 只更新没有存过的新闻
+        self.get_new = bool(getattr(self, 'get_new', False))
+        self.savedIDs = set() # 存已经存过的新闻id
+
         # 数据库
         self.initialize_db()
-
-    def get_num_rows(self):
-        # 得取数据库有多少行数据点
-        command = "SELECT COUNT(*) FROM " + config.table_name
-        res = self.sql.query_one(command)
-        if res:
-            return res[0]
-        return None
-
     
     def initialize_db(self):
         # 数据管理方法
@@ -52,7 +47,7 @@ class FinanceSpider(scrapy.Spider):
         # REPLACE 是让爬虫得到最新的评论数量
         self.insert_command = (
             "REPLACE INTO {} "
-            "VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s) ".format(table_schema)
+            "VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) ".format(table_schema)
         )
 
     def create_table(self):
@@ -61,7 +56,7 @@ class FinanceSpider(scrapy.Spider):
                     config.table_name + "(" + schema + ",PRIMARY KEY(id)) ENGINE=INNODB;")
         self.sql.create_table(command)
 
-    def make_url(self,page,key,num=50):
+    def make_url(self,page,key,num=100): # 默认每页数量100
         '''
         组成完整的URL
         '''
@@ -80,26 +75,40 @@ class FinanceSpider(scrapy.Spider):
 
     def uptoDate(self):
         '''
-        是否已经爬完到今天
+        是否已经爬完今天
         '''
         return (datetime.datetime.now(tz=self.tz)-self.date).days < 0
     
     def reset_stats(self):
         # *******本地统计*******
-        # 默认每页数量
-        self.num = 50
         # 爬取新闻总数
         self.total = 0
         # 数据库原本数量
-        self.rows_before = self.get_num_rows()
+        self.rows_before = self.sql.get_num_rows()
         # 下载图片数量
         self.img_downloaded = 0
+
+    def update_saved_id(self):
+        '''
+        今天有哪些新闻被存过
+        '''
+        command = ('select id from ' + config.table_name + 
+                    ' where publish_time LIKE "' + 
+                    self.date.isoformat().split('T')[0] + '%"')
+        res = self.sql.query(command)
+        res = [] if not res else res
+        self.savedIDs = set([rows[0] for rows in res])
 
     def start_requests(self):
         self.reset_stats()
 
         # 爬到今天
         while not self.uptoDate():  
+            
+            # 如果设置是只爬取没存过的新闻
+            if self.get_new:
+                self.update_saved_id()
+
             # 爬取当天所有和finance有关的分类
             for category in config.keys:
                 key = category['name']
@@ -121,12 +130,7 @@ class FinanceSpider(scrapy.Spider):
             self.date += datetime.timedelta(days=1)
             print("进入下一天，目前爬取数量：%d" % self.total)
 
-        # 爬完之后更新加了多少条数据
-        rows_now = self.get_num_rows() 
-        if self.rows_before and rows_now:
-            self.added = rows_now - self.rows_before
-        else:
-            self.added = "Get_num_row error"
+        self.log_summary()
 
     def parse_news_json(self, response):
         # 读取重要消息
@@ -141,31 +145,62 @@ class FinanceSpider(scrapy.Spider):
             request.meta['news_data'] = news_data
             yield request
 
+
+    def normalize_urls(self, urls):
+        '''
+        把站内网址（//开头的url）改成以（http://）开头
+        '''
+        for i in range(len(urls)):
+            if "http" not in urls[i]:
+                urls[i] = urls[i].replace("//","http://",1)
+        return urls
+
+    def get_news_content(self, selectors):
+        '''
+        get a list of selectors on the paragraphs 
+        return raw texts of this news with images replaced by a '#'
+        '''
+        content = []
+        for selector in selectors:
+            paragraph = ''.join(selector.css('::text').extract())
+            paragraph = paragraph.strip()
+            paragraph += len(selector.css('img')) * "#" # '#' 表示图片
+            content.append(paragraph)
+        return '\n'.join(content)
+
     def parse_news_http(self,response):
         
         # news data
         news_data = response.meta['news_data'] 
         
-        # 图片地址
-        urls = (news_data['image_url'] + 
-                response.css(".one-p img::attr(src)").extract())
-        date = news_data['publish_time'][:10]
-        directory = utils.img_dir(date, 'tencent_news')
-        news_id = news_data['id']
+        # 图片网址
+        urls = self.normalize_urls(
+                    news_data['image_url'] + 
+                    response.css(".one-p img::attr(src)").extract()
+                )
+
+        # 图片目录地址
+        directory = utils.img_dir(  
+                        date=news_data['publish_time'][:10], 
+                        group='tencent_news'
+                    )
         # 下载图片
-        img_no = utils.download_imgs(urls,directory,news_id)
-        # 统计下载图片数量
-        self.img_downloaded += img_no
+        img_urls, img_locs, img_num, err = utils.download_imgs( urls,
+                                                                directory,
+                                                                news_data['id'])
+        # 统计下载图片数量和记录异常数量 3 
+        self.fail_counter += 1 if err else 0 
+        self.img_downloaded += img_num
         
-        # 爬取新闻内容    
-        content = ""
-        for s in response.css('.one-p::text').extract():
-            s = s.strip()
-            content += s + '\n' if s else ""
+        # 爬取新闻内容 
+        content = self.get_news_content(response.css('.one-p'))
 
         # 存进数据库
         news_data['content'] = content
-        news_data['image_num'] = img_no
+        news_data['image_num'] = img_num
+        news_data['img_urls'] = img_urls
+        news_data['img_locs'] = img_locs
+        del news_data['image_url'] # 删除不用存的参数
         self.store(news_data)
 
     def error_parse(self, failure):
@@ -178,11 +213,6 @@ class FinanceSpider(scrapy.Spider):
         
         # 存进数据库
         insert_data = tuple(data[key] for key in self.columns)
-        # TODO:
-        # command = (self.insert_command +
-        #             "ON DUPLICATE KEY UPDATE " + 
-        #             'comment_num=' + str(data['comment_num']))   
-
         success = self.sql.insert_data(self.insert_command , insert_data)
 
         # 记录异常数量 2
@@ -196,6 +226,11 @@ class FinanceSpider(scrapy.Spider):
             return
             
         for news in data:
+            
+            # 如果设置是只爬取没存过的新闻，如本新闻存过，跳过本新闻
+            if self.get_new and news['id'] in self.savedIDs:
+                continue
+
             yield {
                 'id': news['id'],
                 'title': news['title'],
@@ -207,17 +242,31 @@ class FinanceSpider(scrapy.Spider):
                 'image_url': [url for urls in news['irs_imgs'].values() for url in urls]
             }    
 
-
-    def __del__(self):
+    def log_summary(self):
         # 总结本次爬取数据
         try:
             s = "\n********************\n"
+            self.crawler.stats.set_value('item_scraped_count', self.total)
             summary = ""
-            headers = ['Links','Abnormal','New data','Image downloads']
-            data = [self.total, self.fail_counter, self.added, self.img_downloaded]
+            headers = ['item_scraped_count(Links)','Abnormal','New data added','Image downloads']
+            data = [self.total, 
+                    self.fail_counter, 
+                    self.num_new_rows(), 
+                    self.img_downloaded]
+            
             for header, data in zip(headers, data):
                 summary += header + ": " + str(data) + "\n"
             summary = s + summary + s
             utils.log(summary, WARNING)
         except Exception:
             utils.log("\nSpider exited abnormally", WARNING)
+
+    def num_new_rows(self):
+        # 爬完之后更新加了多少条数据
+        rows_now = self.sql.get_num_rows()
+        if self.rows_before and rows_now:
+            added = rows_now - self.rows_before
+        else:
+            added = "Get_num_row error"
+        self.rows_before = rows_now
+        return added

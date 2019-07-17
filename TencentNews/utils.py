@@ -9,6 +9,8 @@ import os
 
 logging.basicConfig(filename='crawl.log')
 
+image_dir = "./back_up/news_pictures/"
+
 def log(message, level=logging.DEBUG, *args, **kwargs):
     
     logging.log(level, message, *args, **kwargs)
@@ -35,9 +37,7 @@ def save_img(url, local_addr):
         return False, e
         
 def img_dir(date, group):
-    directory =  ("./back_up/news_pictures/" +
-            date + "/" +
-            group + "/")
+    directory =  image_dir + date + "/" + group + "/"
     
     if not os.path.exists(directory):
         os.makedirs(directory)
@@ -46,23 +46,33 @@ def img_dir(date, group):
 def download_imgs(urls, directory, news_id):
     '''
     下载保存标题缩略图和文章里的插图
+    return:
+        1. (string) image urls joined by '@'
+        2. (string) image locations on disk joined by '@'
+        3. (int) num of image downloaded
+        4. err object if error happened during save_img()
     '''
-    img_no = 0
-    err_counter = 0 
+    img_no = 1
     err = None
-    
+    img_urls = []
+    img_locs = []
+
     for url in urls:
-        # 把//开头的url改成http://
-        if not "http" in url:
-            url = url.replace("//","http://",1)
-        img_no += 1
         img_loc = (directory + news_id + '-' + str(img_no) + ".jpg")
         is_saved, err = save_img(url, img_loc)
-        err_counter += (not is_saved)
+        if is_saved:
+            img_urls.append(url)
+            img_locs.append(img_loc)
+            img_no += 1
+
+        # TODO: unused error counter
+        # err_counter += (not is_saved)
     
     # 如果有下载错误的
-    if img_no != len(urls) or err_counter > 0:
-        log(err,ERROR)
-        self.fail_counter += 1
-
-    return img_no
+    if img_no-1 != len(urls):
+        log(err,logging.ERROR)
+    
+    return ('@'.join(img_urls),
+            '@'.join(img_locs),
+            img_no-1,
+            err)

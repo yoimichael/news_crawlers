@@ -18,7 +18,16 @@ table_schema = (
     ("`keywords`", "TINYTEXT"), #目前找到的最长是24, TINYTEXT支持最大255
     ("`content`", "TEXT"), #目前找到的最长是373, TINYTEXT支持最大65535 
     ("`image_num`", "TINYINT UNSIGNED NOT NULL"), #最大值255
+    ("`img_urls`", "TEXT"), #理由如下
+    ("`img_locs`", "TEXT"), #理由如下
 )
+
+# image_num, img_locs数据库架构理由：
+# 本地地址的格式是/back_up/news_pictures/0000-00-00/(20)/(14)-(3).jpg
+# 一共77characters，假设最多有255个地址，这样78*255=最大有19890个characters
+# 图片地址模版是https://inews.gtimg.com/newsapp_ls/0/9645825364_294195/0
+# 一共55个characters， 同样理由
+# 所以选择TEXT（最大值有65545）
 
 # 所有和财经有关的新闻类别
 keys = (

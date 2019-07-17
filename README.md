@@ -20,13 +20,6 @@
     cd TencentNews/
     scrapy crawl FinanceSpider
 ```
-- For past news data, pass in the argument ```days_prior``` to specify how many days before do you want the spider to start crawling. This way it will update comment_num of news in the past.
-(Drawback: the API weblink available only supports news about 20 days before the current date.) e.g.
-```
-    scrapy crawl FinanceSpider -a days_prior=3
-```
-- For current data, don't pass in anything.
-
 Sidenote: the reason to use ```cd``` is to support ```scrapy``` commands, which only works with scrapy.cfg file in the same directory
 
 ### Usage 2: Spider automation minotoring
@@ -97,6 +90,23 @@ Note:
 ## Spiders:
 ### FinanceSpider 
 This crawler uses API endpoints implemented within Tencent New's auto-scroll feature in order to crawl and store all key information about news related to finance. 
+### Arguments:
+#### days_prior
+- For past news data, pass a number in the argument ```days_prior``` to specify how many days before do you want the spider to start crawling. This way it will update comment_num of news in the past.
+(Drawback: the API weblink available only supports news about 20 days before the current date.) e.g.
+```
+    scrapy crawl FinanceSpider -a days_prior=3
+```
+- For current data, don't pass in anything.
+#### get_new
+- To avoid redownloading news images (which takes a long time), set the argument ```get_new``` to be True; the spider will first query all news' ids before crawling.
+```
+    scrapy crawl FinanceSpider -a get_new=1
+``` 
+#### to use of multiple arguments, follow the format:
+```
+    scrapy crawl FinanceSpider -a arg1=val1 -a arg2=val2
+``` 
 
 ## MySQL database schema
 Database name: news
@@ -113,6 +123,8 @@ Table name: finance_news
 | keywords     | tinytext              | YES  |     | NULL    |       |
 | content      | text                  | YES  |     | NULL    |       |
 | image_num    | tinyint(3) unsigned   | NO   |     | NULL    |       |
+| img_urls     | text                  | YES  |     | NULL    |       |
+| img_locs     | text                  | YES  |     | NULL    |       |
 
 ## Findings on Tencent News's URLs
 1. https://pacaio.match.qq.com/xw/site?&ext=finance&num=20&page=0

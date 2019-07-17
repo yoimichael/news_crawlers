@@ -81,3 +81,10 @@ class SqlHelper(singleton.Singleton):
             utils.log('sql helper execute exception msg:%s' % str(e))
             return None
 
+    def get_num_rows(self):
+        # 得取数据库有多少行数据点
+        command = "SELECT COUNT(*) FROM " + config.table_name
+        res = self.query_one(command)
+        if res:
+            return res[0]
+        return None
