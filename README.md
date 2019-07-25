@@ -11,9 +11,12 @@
 |        traceback       |      debug tracing in logs     |
 | mysql-connector-python |      python mysql database     |
 |         scrapyd        | crawler automation and control |
-|       supervisor       | process automation and control |
-|      spiderkeeper      |             nice UI            |
 |     scrapyd-client     |    scrapy project deployment   |
+|         Pillow         |       image downloading        |
+
+unused:
+|      spiderkeeper      |             nice UI            |
+|       supervisor       | process automation and control |
 
 ### Usage 1: Test crawling:
 ```
@@ -98,8 +101,8 @@ This crawler uses API endpoints implemented within Tencent New's auto-scroll fea
     scrapy crawl FinanceSpider -a days_prior=3
 ```
 - For current data, don't pass in anything.
-#### get_new
-- To avoid redownloading news images (which takes a long time), set the argument ```get_new``` to be True; the spider will first query all news' ids before crawling.
+#### early_stop
+- To avoid re-downloading and re-crwaling the same news images (which takes a long time), set the argument ```early_stop``` to be True; the spider will stop crawling as soon as the news is found in the database.
 ```
     scrapy crawl FinanceSpider -a get_new=1
 ``` 

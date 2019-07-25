@@ -15,7 +15,7 @@ SPIDER_MODULES = ['TencentNews.spiders']
 NEWSPIDER_MODULE = 'TencentNews.spiders'
 
 # LOG_STDOUT = True
-LOG_LEVEL = 'WARNING'
+LOG_LEVEL = 'INFO' #WARNING
 
 FEED_EXPORT_ENCODING = 'utf-8'
 
@@ -66,11 +66,16 @@ ROBOTSTXT_OBEY = True
 #    'scrapy.extensions.telnet.TelnetConsole': None,
 #}
 
-# Configure item pipelines
+# Configure item pipelines # 数越小越优先
 # See https://doc.scrapy.org/en/latest/topics/item-pipeline.html
-#ITEM_PIPELINES = {
-#    'TencentNews.pipelines.TencentNewsPipeline': 300,
-#}
+ITEM_PIPELINES = {
+   'TencentNews.image_pipeline.ImagePipeline': 1,
+   'TencentNews.data_pipeline.DataPipeline': 300,     
+}
+# 30 days to avoid redownloading same images
+IMAGES_EXPIRES = 60
+# Where to store downloaded image
+IMAGES_STORE = "./back_up/news_pictures/"
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://doc.scrapy.org/en/latest/topics/autothrottle.html
